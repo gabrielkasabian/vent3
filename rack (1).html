@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vent3 - Rack</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#04132b,#0c2d6b);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.card{background:rgba(9,30,58,.97);border:1px solid #274d82;border-radius:18px;padding:28px 24px;width:100%;max-width:420px;text-align:center}
+.logo-wrap{margin-bottom:16px}
+.logo-wrap img{width:220px;max-width:85%}
+.sep{width:60px;height:2px;background:linear-gradient(90deg,transparent,#41b8f5,transparent);margin:0 auto 16px}
+.badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.3);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:800;color:#00e676;margin-bottom:16px}
+.badge-dot{width:7px;height:7px;border-radius:50%;background:#00e676}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.info-item{background:rgba(15,40,72,.9);border:1px solid #1a3a62;border-radius:10px;padding:11px 10px;text-align:left}
+.info-item.full{grid-column:1/-1}
+.info-lbl{font-size:9px;font-weight:800;color:#3d6a96;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px}
+.info-val{font-size:14px;font-weight:800;color:#c5dff7}
+.info-val.big{font-size:18px;color:#00e676}
+.info-val.cod{color:#41b8f5;font-family:monospace}
+.warn{color:#ffd740}
+.red{color:#ff5252}
+.footer{font-size:10px;color:#3d6a96;margin-top:16px;border-top:1px solid #1a3a62;padding-top:12px}
+.no-data{color:#7aaed4;font-size:13px;padding:20px 0}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo-wrap">
+    <img src="https://i.imgur.com/your-logo.png" onerror="this.style.display='none';document.getElementById('logo-txt').style.display='block'" alt="Vent3">
+    <div id="logo-txt" style="display:none;font-size:28px;font-weight:800;color:#41b8f5;letter-spacing:2px">VENT3</div>
+  </div>
+  <div class="sep"></div>
+  <div class="badge"><div class="badge-dot"></div>Laboratorios Vent3 S.R.L.</div>
+
+  <div id="contenido"></div>
+
+  <div id="btn-vivo-wrap" style="margin-bottom:14px;display:none">
+  <a id="btn-vivo" href="#" style="display:block;padding:13px;background:linear-gradient(135deg,#1249aa,#1e82d2);border-radius:10px;color:#fff;font-family:Arial,sans-serif;font-size:14px;font-weight:800;text-align:center;text-decoration:none">
+    Ver stock en vivo en el sistema
+  </a>
+</div>
+<div class="footer">
+    Laboratorios Vent3 S.R.L. &mdash; Córdoba, Argentina<br>
+    Sistema de Gestión de Stock
+  </div>
+</div>
+
+<script>
+function getParam(name){
+  var url=window.location.search;
+  var params=new URLSearchParams(url);
+  return params.get(name)||'';
+}
+
+var cod=getParam('cod');
+var nom=getParam('nom');
+var lote=getParam('lote');
+var ubic=getParam('ubic');
+var venc=getParam('venc');
+var stk=getParam('stk');
+var ud=getParam('ud');
+
+var div=document.getElementById('contenido');
+
+if(!cod){
+  div.innerHTML='<div class="no-data">Escanea el QR de un rack para ver la información del lote.</div>';
+} else {
+  var vencColor='#c5dff7';
+  if(venc&&venc!=='S/V'){
+    var hoy=new Date();hoy.setHours(0,0,0,0);
+    var fv=new Date(venc.split('/').reverse().join('-')+'T00:00:00');
+    var dias=Math.round((fv-hoy)/86400000);
+    if(dias<0) vencColor='#ff5252';
+    else if(dias<=30) vencColor='#ffd740';
+  }
+
+  div.innerHTML=
+    '<div class="info-grid">'+
+    '<div class="info-item full"><div class="info-lbl">Producto</div><div class="info-val" style="font-size:15px">'+decodeURIComponent(nom)+'</div></div>'+
+    '<div class="info-item"><div class="info-lbl">Codigo</div><div class="info-val cod">'+decodeURIComponent(cod)+'</div></div>'+
+    '<div class="info-item"><div class="info-lbl">Lote</div><div class="info-val">'+decodeURIComponent(lote)+'</div></div>'+
+    '<div class="info-item"><div class="info-lbl">Stock actual</div><div class="info-val big">'+decodeURIComponent(stk||'-')+' '+decodeURIComponent(ud||'')+'</div></div>'+
+    '<div class="info-item"><div class="info-lbl">Ubicacion</div><div class="info-val big">'+decodeURIComponent(ubic||'Sin asignar')+'</div></div>'+
+    '<div class="info-item"><div class="info-lbl">Vencimiento</div><div class="info-val" style="color:'+vencColor+'">'+decodeURIComponent(venc||'S/V')+'</div></div>'+
+    '</div>';
+}
+
+// Agregar boton ver en vivo si hay cod y lote
+if(cod && lote){
+  var wrap = document.getElementById('btn-vivo-wrap');
+  var btn = document.getElementById('btn-vivo');
+  if(wrap && btn){
+    btn.href = 'https://gabrielkasabian.github.io/vent3/laboratorios-vent3-25.html#lote=' + encodeURIComponent(lote) + '&cod=' + encodeURIComponent(cod);
+    wrap.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>
