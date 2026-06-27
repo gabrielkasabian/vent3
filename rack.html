@@ -55,6 +55,8 @@ var nom=getParam('nom');
 var lote=getParam('lote');
 var ubic=getParam('ubic');
 var venc=getParam('venc');
+var stk=getParam('stk');
+var ud=getParam('ud');
 
 var div=document.getElementById('contenido');
 
@@ -75,6 +77,7 @@ if(!cod){
     '<div class="info-item full"><div class="info-lbl">Producto</div><div class="info-val" style="font-size:15px">'+decodeURIComponent(nom)+'</div></div>'+
     '<div class="info-item"><div class="info-lbl">Codigo</div><div class="info-val cod">'+decodeURIComponent(cod)+'</div></div>'+
     '<div class="info-item"><div class="info-lbl">Lote</div><div class="info-val">'+decodeURIComponent(lote)+'</div></div>'+
+    '<div class="info-item"><div class="info-lbl">Stock actual</div><div class="info-val big">'+decodeURIComponent(stk||'-')+' '+decodeURIComponent(ud||'')+'</div></div>'+
     '<div class="info-item"><div class="info-lbl">Ubicacion</div><div class="info-val big">'+decodeURIComponent(ubic||'Sin asignar')+'</div></div>'+
     '<div class="info-item"><div class="info-lbl">Vencimiento</div><div class="info-val" style="color:'+vencColor+'">'+decodeURIComponent(venc||'S/V')+'</div></div>'+
     '</div>';
