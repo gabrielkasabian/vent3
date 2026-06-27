@@ -1146,7 +1146,7 @@ function _showQRModal(matCod,matNom,loteNum,loteId,ud){
   pR.appendChild(rl);card.appendChild(pR);
   var bc=document.createElement('button');bc.className='qr-close';bc.style.marginTop='12px';bc.textContent='Cerrar';bc.onclick=cerrarQR;card.appendChild(bc);
   modal.appendChild(card);document.body.appendChild(modal);
-  var tLote='https://gabrielkasabian.github.io/vent3/rack.html?cod='+encodeURIComponent(matCod)+'&nom='+encodeURIComponent(matNom)+'&lote='+encodeURIComponent(loteNum)+'&stk='+encodeURIComponent(stk)+'&ud='+encodeURIComponent(ud)+'&venc='+encodeURIComponent(vencStr)+'&ubic='+encodeURIComponent(ubic||'Sin asignar');
+  var tLote='VENT3|COD:'+matCod+'|NOM:'+matNom+'|LOTE:'+loteNum+'|STK:'+stk+'|UD:'+ud+'|VENC:'+vencStr+'|UBIC:'+ubic;
   var tRack='https://gabrielkasabian.github.io/vent3/rack.html?cod='+encodeURIComponent(matCod)+'&nom='+encodeURIComponent(matNom)+'&lote='+encodeURIComponent(loteNum)+'&ubic='+encodeURIComponent(ubic||'Sin asignar')+'&venc='+encodeURIComponent(vencStr);
   new QRCode(qbL,{text:tLote,width:180,height:180,correctLevel:QRCode.CorrectLevel.M});
   new QRCode(qbR,{text:tRack,width:180,height:180,correctLevel:QRCode.CorrectLevel.M});
@@ -1157,157 +1157,10 @@ function _showQRModal(matCod,matNom,loteNum,loteId,ud){
 function cerrarQR(){var m=document.getElementById('qr-modal');if(m){m.parentNode.removeChild(m);}_qrLoteId=null;}
 
 
-// ---- ESCANER QR CON CAMARA ----
+// ---- ESCANER QR ----
 var _scanStream = null;
 var _scanAnimFrame = null;
 var _scanActive = false;
-
-function rScan(){
-  var body = document.getElementById('scan-body');
-  if(!body) return;
-  // Detener camara anterior si habia
-  _stopScan();
-  body.innerHTML = '';
-
-  // Titulo
-  var ttl = document.createElement('div');
-  ttl.style.cssText = 'font-size:15px;font-weight:800;color:#fff;margin-bottom:14px';
-  ttl.textContent = 'Escanear QR de lote';
-  body.appendChild(ttl);
-
-  var wrap = document.createElement('div');
-  wrap.className = 'scan-wrap';
-
-  // Camara
-  var vbox = document.createElement('div');
-  vbox.className = 'scan-video-box';
-  var video = document.createElement('video');
-  video.id = 'scan-video';
-  video.setAttribute('playsinline','');
-  video.setAttribute('autoplay','');
-  video.muted = true;
-  var scanline = document.createElement('div');
-  scanline.className = 'scan-line';
-  vbox.appendChild(video);
-  vbox.appendChild(scanline);
-  wrap.appendChild(vbox);
-
-  // Resultado (oculto hasta que escanee)
-  var result = document.createElement('div');
-  result.className = 'scan-result';
-  result.id = 'scan-result';
-  result.style.display = 'none';
-  wrap.appendChild(result);
-
-  // Mensaje esperando
-  var esp = document.createElement('div');
-  esp.className = 'scan-empty';
-  esp.id = 'scan-esp';
-  esp.textContent = 'Apunta la camara al QR del lote...';
-  wrap.appendChild(esp);
-
-  // Boton detener
-  var btnStop = document.createElement('button');
-  btnStop.className = 'btn btn-g';
-  btnStop.style.cssText = 'width:100%;max-width:380px;padding:11px;font-size:13px';
-  btnStop.textContent = 'Detener camara';
-  btnStop.onclick = function(){ _stopScan(); btnStop.style.display='none'; };
-  wrap.appendChild(btnStop);
-
-  body.appendChild(wrap);
-
-  // Cargar jsQR dinamicamente
-  _loadJsQR(function(){
-    _startCamera(video);
-  });
-}
-
-function _loadJsQR(cb){
-  if(typeof jsQR !== 'undefined'){ cb(); return; }
-  var s = document.createElement('script');
-  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js';
-  s.onload = function(){ cb(); };
-  document.head.appendChild(s);
-}
-
-function _startCamera(video){
-  var esp = document.getElementById('scan-esp');
-  // Intentar con diferentes configuraciones para Android
-  var configs = [
-    {video:{facingMode:{exact:'environment'}}},
-    {video:{facingMode:'environment'}},
-    {video:{facingMode:'user'}},
-    {video:true}
-  ];
-  var idx = 0;
-  function tryNext(){
-    if(idx >= configs.length){
-      if(esp) esp.textContent = 'No se pudo acceder a la camara. Verifica los permisos en Configuracion > Apps > Chrome > Permisos > Camara.';
-      return;
-    }
-    var cfg = configs[idx++];
-    navigator.mediaDevices.getUserMedia(cfg)
-    .then(function(stream){
-      _scanStream = stream;
-      _scanActive = true;
-      video.srcObject = stream;
-      video.setAttribute('playsinline','true');
-      video.setAttribute('autoplay','true');
-      video.muted = true;
-      var playPromise = video.play();
-      if(playPromise !== undefined){
-        playPromise.then(function(){
-          setTimeout(function(){ _scanLoop(video); }, 500);
-        }).catch(function(){
-          setTimeout(function(){ _scanLoop(video); }, 1000);
-        });
-      } else {
-        setTimeout(function(){ _scanLoop(video); }, 1000);
-      }
-      if(esp) esp.textContent = 'Apunta la camara al QR del lote...';
-    })
-    .catch(function(err){
-      if(err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'){
-        if(esp) esp.innerHTML = 'Permiso de camara denegado.<br>Ve a <strong>Configuracion del celular > Apps > Chrome > Permisos > Camara > Permitir</strong> y recarga la pagina.';
-      } else {
-        tryNext();
-      }
-    });
-  }
-  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    // Fallback para navegadores viejos
-    var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-    if(!getUserMedia){
-      if(esp) esp.textContent = 'Tu navegador no soporta camara. Usa Chrome actualizado.';
-      return;
-    }
-    getUserMedia.call(navigator, {video:{facingMode:'environment'}}, function(stream){
-      _scanStream = stream;
-      _scanActive = true;
-      video.srcObject = stream;
-      video.play();
-      setTimeout(function(){ _scanLoop(video); }, 500);
-    }, function(){ if(esp) esp.textContent = 'No se pudo acceder a la camara.'; });
-    return;
-  }
-  tryNext();
-}
-
-function _scanLoop(video){
-  if(!_scanActive) return;
-  var canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth || 640;
-  canvas.height = video.videoHeight || 480;
-  var ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  var code = jsQR(imageData.data, imageData.width, imageData.height, {inversionAttempts:'dontInvert'});
-  if(code && code.data){
-    _onQRDetected(code.data);
-    return;
-  }
-  _scanAnimFrame = requestAnimationFrame(function(){ _scanLoop(video); });
-}
 
 function _stopScan(){
   _scanActive = false;
@@ -1315,132 +1168,208 @@ function _stopScan(){
   if(_scanStream){ _scanStream.getTracks().forEach(function(t){t.stop();}); _scanStream=null; }
 }
 
-function _onQRDetected(texto){
+function rScan(){
   _stopScan();
-  // Ocultar linea de escaneo
-  var sl = document.querySelector('.scan-line');
-  if(sl) sl.style.display='none';
-  var esp = document.getElementById('scan-esp');
-  if(esp) esp.textContent = 'QR detectado!';
+  var body = document.getElementById('scan-body');
+  if(!body) return;
+  body.innerHTML = '';
 
-  // Parsear texto: VENT3|COD:MP-001|NOM:...|LOTE:5534|STK:30|UD:kg|VENC:...|UBIC:...
-  var loteId = null;
-  var matCod = '', matNom = '', loteNum = '', stk = 0, ud = '', vencStr = '', ubicStr = '';
-
-  if(texto.indexOf('VENT3|') === 0){
-    var partes = texto.split('|');
-    partes.forEach(function(p){
-      if(p.indexOf('COD:')===0) matCod = p.substring(4);
-      else if(p.indexOf('NOM:')===0) matNom = p.substring(4);
-      else if(p.indexOf('LOTE:')===0) loteNum = p.substring(5);
-      else if(p.indexOf('STK:')===0) stk = parseFloat(p.substring(4))||0;
-      else if(p.indexOf('UD:')===0) ud = p.substring(3);
-      else if(p.indexOf('VENC:')===0) vencStr = p.substring(5);
-      else if(p.indexOf('UBIC:')===0) ubicStr = p.substring(5);
-    });
-    // Buscar lote en datos
-    var mat = mats.find(function(m){ return m.cod === matCod; });
-    if(mat){
-      var lote = lotes.find(function(l){ return l.mid===mat.id && (l.lote||'S/N')===loteNum; });
-      if(lote){ loteId = lote.id; stk = lote.stk; ud = mat.ud; }
-    }
-  }
-
-  var result = document.getElementById('scan-result');
-  if(!result) return;
-  result.style.display = 'block';
-  result.innerHTML = '';
-
-  if(!matCod){
-    var err = document.createElement('div');
-    err.style.cssText = 'color:var(--red);font-weight:800;text-align:center;padding:10px';
-    err.textContent = 'QR no reconocido. Escanea un QR generado por este sistema.';
-    result.appendChild(err);
-    // Boton reintentar
-    var btnR = document.createElement('button');
-    btnR.className = 'scan-apply';
-    btnR.style.marginTop = '10px';
-    btnR.textContent = 'Escanear de nuevo';
-    btnR.onclick = function(){ rScan(); };
-    result.appendChild(btnR);
-    return;
-  }
-
-  // Mostrar info del lote
   var ttl = document.createElement('div');
-  ttl.className = 'scan-result-ttl';
-  ttl.textContent = 'Lote detectado';
-  result.appendChild(ttl);
+  ttl.style.cssText = 'font-size:15px;font-weight:800;color:#fff;margin-bottom:16px';
+  ttl.textContent = 'Buscar lote';
+  body.appendChild(ttl);
 
+  // Instruccion
+  var inst = document.createElement('div');
+  inst.style.cssText = 'font-size:12px;color:var(--t3);margin-bottom:14px;line-height:1.6';
+  inst.innerHTML = 'Escribi el <strong style="color:var(--glow)">numero de lote</strong> o el <strong style="color:var(--glow)">codigo del material</strong>.<br>Con la pistola Bluetooth: apunta al QR y dispara — se completa solo.';
+  body.appendChild(inst);
+
+  // Campo grande de busqueda
+  var inputWrap = document.createElement('div');
+  inputWrap.style.cssText = 'display:flex;gap:8px;margin-bottom:16px';
+
+  var inp = document.createElement('input');
+  inp.type = 'text';
+  inp.id = 'scan-input';
+  inp.placeholder = 'Ej: 5534  o  MP-001';
+  inp.style.cssText = 'flex:1;padding:14px;font-size:18px;font-weight:800;border-radius:10px;border:2px solid var(--glow);background:var(--surf2);color:#fff;text-align:center;outline:none';
+  inp.setAttribute('autocomplete','off');
+  inp.setAttribute('autocorrect','off');
+  inp.setAttribute('autocapitalize','off');
+
+  var btnBuscar = document.createElement('button');
+  btnBuscar.style.cssText = 'padding:14px 20px;background:linear-gradient(135deg,var(--mid),var(--sky));border:none;border-radius:10px;color:#fff;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer;touch-action:manipulation';
+  btnBuscar.textContent = 'Buscar';
+
+  inputWrap.appendChild(inp);
+  inputWrap.appendChild(btnBuscar);
+  body.appendChild(inputWrap);
+
+  // Resultado
+  var resultDiv = document.createElement('div');
+  resultDiv.id = 'scan-result-area';
+  body.appendChild(resultDiv);
+
+  // Foco automatico
+  setTimeout(function(){ inp.focus(); }, 300);
+
+  function buscar(){
+    var q = inp.value.trim();
+    if(!q){ toast('Ingresa un numero de lote o codigo','warn'); return; }
+
+    // Si viene de pistola con formato VENT3|COD:...|LOTE:...
+    var loteNum = q, matCod = '';
+    if(q.indexOf('VENT3|') === 0 || q.indexOf('https://') === 0){
+      var partes = q.split('|');
+      partes.forEach(function(p){
+        if(p.indexOf('COD:')===0) matCod=p.substring(4);
+        if(p.indexOf('LOTE:')===0) loteNum=p.substring(5);
+      });
+      // Si es URL de GitHub
+      if(q.indexOf('https://') === 0){
+        try{
+          var url = new URL(q);
+          matCod = url.searchParams.get('cod')||'';
+          loteNum = url.searchParams.get('lote')||'';
+        }catch(e){}
+      }
+    }
+
+    // Buscar lote por numero
+    var lote = null;
+    var mat = null;
+
+    // Primero buscar por lote exacto
+    lote = lotes.find(function(l){ return l.lote === loteNum || l.lote === q; });
+    if(!lote){
+      // Buscar por codigo de material
+      mat = mats.find(function(m){ return m.cod === q || m.cod === matCod; });
+      if(mat){ lote = lotes.find(function(l){ return l.mid === mat.id && l.stk > 0; }); }
+    }
+    if(!lote && matCod){
+      mat = mats.find(function(m){ return m.cod === matCod; });
+      if(mat){ lote = lotes.find(function(l){ return l.mid === mat.id; }); }
+    }
+    // Busqueda parcial
+    if(!lote){
+      lote = lotes.find(function(l){ return l.lote && l.lote.toLowerCase().indexOf(q.toLowerCase()) >= 0; });
+    }
+
+    if(!lote){
+      resultDiv.innerHTML = '<div style="color:var(--red);font-weight:800;text-align:center;padding:20px">No se encontro el lote "'+q+'".<br><span style="font-size:11px;color:var(--t3)">Verifica el numero e intenta de nuevo.</span></div>';
+      return;
+    }
+
+    mat = mat || mats.find(function(m){ return m.id === lote.mid; });
+    if(!mat){ resultDiv.innerHTML = '<div style="color:var(--red);font-weight:800;padding:20px">Material no encontrado</div>'; return; }
+
+    mostrarResultado(lote, mat, resultDiv);
+  }
+
+  btnBuscar.onclick = buscar;
+  inp.onkeydown = function(e){
+    if(e.keyCode === 13 || e.which === 13){ buscar(); }
+  };
+  // Para pistola: busca automatico cuando deja de tipear
+  var timer = null;
+  inp.oninput = function(){
+    clearTimeout(timer);
+    var v = inp.value.trim();
+    // Si tiene formato de QR completo busca solo
+    if(v.indexOf('VENT3|') === 0 || v.indexOf('https://') === 0){
+      timer = setTimeout(buscar, 300);
+    }
+  };
+}
+
+function mostrarResultado(lote, mat, container){
+  container.innerHTML = '';
+
+  var venc = lote.venc||'2099-12-31';
+  var vencStr = venc !== '2099-12-31' ? venc.split('-').reverse().join('/') : 'S/V';
+  var sc = lote.stk <= 0 ? 'var(--red)' : lote.stk < mat.min ? 'var(--yellow)' : 'var(--green)';
+
+  // Info del lote
   var info = document.createElement('div');
-  info.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px';
-  [{l:'Codigo',v:matCod,c:'var(--glow)'},{l:'Nombre',v:matNom,c:'var(--off)'},{l:'Lote',v:loteNum,c:'var(--t1)'},{l:'Stock actual',v:stk+' '+ud,c:'var(--green)'},{l:'Vencimiento',v:vencStr||'S/V',c:'var(--t2)'},{l:'Ubicacion',v:ubicStr||'Sin asignar',c:'var(--t3)'}].forEach(function(item){
+  info.style.cssText = 'background:var(--surf);border:1px solid var(--bdr2);border-radius:12px;padding:14px;margin-bottom:14px';
+
+  var infoTtl = document.createElement('div');
+  infoTtl.style.cssText = 'font-size:9px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px';
+  infoTtl.textContent = 'Lote encontrado';
+  info.appendChild(infoTtl);
+
+  var grid = document.createElement('div');
+  grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
+  [{l:'Material',v:mat.nom,c:'var(--off)'},{l:'Codigo',v:mat.cod,c:'var(--glow)'},{l:'Lote',v:lote.lote||'S/N',c:'var(--t1)'},{l:'Stock actual',v:lote.stk+' '+mat.ud,c:sc},{l:'Vencimiento',v:vencStr,c:'var(--t2)'},{l:'Ubicacion',v:lote.ubic||'Sin asignar',c:'var(--t3)'}].forEach(function(item){
     var d = document.createElement('div');
     d.style.cssText = 'background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:7px 12px;min-width:140px';
     d.innerHTML = '<div style="font-size:9px;color:var(--t3);font-weight:800;text-transform:uppercase;letter-spacing:1px">'+item.l+'</div><div style="font-size:13px;font-weight:800;color:'+item.c+';margin-top:2px">'+item.v+'</div>';
-    info.appendChild(d);
+    grid.appendChild(d);
   });
-  result.appendChild(info);
+  info.appendChild(grid);
+  container.appendChild(info);
 
-  // Mov rapido
+  // Movimiento
   var movTtl = document.createElement('div');
-  movTtl.className = 'scan-result-ttl';
+  movTtl.style.cssText = 'font-size:11px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px';
   movTtl.textContent = 'Registrar movimiento';
-  result.appendChild(movTtl);
+  container.appendChild(movTtl);
 
   var mr = document.createElement('div');
-  mr.className = 'scan-mov-row';
+  mr.style.cssText = 'display:flex;gap:7px;margin-bottom:10px;align-items:center';
   var sel = document.createElement('select');
   sel.id = 'scan-tipo';
-  var o1 = document.createElement('option'); o1.value='in'; o1.textContent='+ Ingreso';
-  var o2 = document.createElement('option'); o2.value='out'; o2.textContent='- Egreso';
-  sel.appendChild(o1); sel.appendChild(o2);
-  var inp = document.createElement('input');
-  inp.type='number'; inp.id='scan-qty'; inp.placeholder='Cantidad'; inp.min='0'; inp.step='0.001';
-  inp.style.cssText='flex:1;padding:10px;font-size:16px;font-weight:800;text-align:center';
-  mr.appendChild(sel); mr.appendChild(inp);
-  result.appendChild(mr);
+  sel.style.cssText = 'padding:12px;font-size:14px;font-weight:800;border-radius:8px;background:var(--surf2);border:1px solid var(--bdr2);color:var(--t1)';
+  var o1=document.createElement('option');o1.value='in';o1.textContent='+ Ingreso';
+  var o2=document.createElement('option');o2.value='out';o2.textContent='- Egreso';
+  sel.appendChild(o1);sel.appendChild(o2);
+  var iq=document.createElement('input');
+  iq.type='number';iq.id='scan-qty';iq.placeholder='Cantidad';iq.min='0';iq.step='0.001';
+  iq.style.cssText='flex:1;padding:12px;font-size:18px;font-weight:800;text-align:center;border-radius:8px;background:var(--surf2);border:2px solid var(--glow);color:#fff';
+  mr.appendChild(sel);mr.appendChild(iq);
+  container.appendChild(mr);
 
-  var stkDisplay = document.createElement('div');
-  stkDisplay.id = 'scan-stk-display';
-  stkDisplay.style.cssText = 'font-size:11px;color:var(--t3);margin-bottom:10px;text-align:center';
-  stkDisplay.textContent = 'Stock actual: ' + stk + ' ' + ud;
-  result.appendChild(stkDisplay);
+  var stkDisp = document.createElement('div');
+  stkDisp.id='scan-stk-disp';
+  stkDisp.style.cssText='font-size:11px;color:var(--t3);margin-bottom:12px;text-align:center';
+  stkDisp.textContent='Stock actual: '+lote.stk+' '+mat.ud;
+  container.appendChild(stkDisp);
 
-  var btnApl = document.createElement('button');
-  btnApl.className = 'scan-apply';
-  btnApl.textContent = 'Aplicar movimiento';
-  var _lid = loteId;
-  var _ud = ud;
-  btnApl.onclick = function(){
-    var tipo = document.getElementById('scan-tipo').value;
-    var qty = parseFloat(document.getElementById('scan-qty').value);
-    if(!qty||qty<=0){ toast('Ingresa una cantidad valida','warn'); return; }
-    var l2 = lotes.find(function(x){ return x.id===_lid; });
-    if(!l2){ toast('Lote no encontrado en el sistema','err'); return; }
-    if(tipo==='out'&&qty>l2.stk){ toast('Stock insuficiente: '+l2.stk+' '+_ud,'err'); return; }
-    if(tipo==='in'){ l2.stk+=qty; } else { l2.stk-=qty; }
+  var btnApl=document.createElement('button');
+  btnApl.style.cssText='width:100%;padding:14px;background:linear-gradient(135deg,var(--mid),var(--sky));border:none;border-radius:10px;color:#fff;font-family:var(--f);font-size:15px;font-weight:800;cursor:pointer;touch-action:manipulation;margin-bottom:8px';
+  btnApl.textContent='Aplicar movimiento';
+  var _lid=lote.id;var _ud=mat.ud;var _mid=mat.id;
+  btnApl.onclick=function(){
+    var tipo=document.getElementById('scan-tipo').value;
+    var qty=parseFloat(document.getElementById('scan-qty').value);
+    if(!qty||qty<=0){toast('Ingresa una cantidad valida','warn');return;}
+    var l2=lotes.find(function(x){return x.id===_lid;});
+    if(!l2){toast('Lote no encontrado','err');return;}
+    if(tipo==='out'&&qty>l2.stk){toast('Stock insuficiente: '+l2.stk+' '+_ud,'err');return;}
+    if(tipo==='in'){l2.stk+=qty;}else{l2.stk-=qty;}
     l2.stk=Math.round(l2.stk*1000)/1000;
     var fmov=new Date().toLocaleString('es-AR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-    movs.push({id:nMv++,fecha:fmov,tipo:tipo==='in'?'ingreso':'egreso',mid:l2.mid,lote:l2.lote,oc:'',fvenc:l2.venc||'',qty:qty,ud:_ud,resp:(curU&&USERS[curU]?USERS[curU].name:'Deposito'),obs:'Desde escaner'});
-    saveData(); updateBadge();
-    var sd = document.getElementById('scan-stk-display');
-    if(sd){ sd.textContent='Stock actual: '+l2.stk+' '+_ud; sd.style.color='var(--green)'; }
+    movs.push({id:nMv++,fecha:fmov,tipo:tipo==='in'?'ingreso':'egreso',mid:_mid,lote:l2.lote,oc:'',fvenc:l2.venc||'',qty:qty,ud:_ud,resp:(curU&&USERS[curU]?USERS[curU].name:'Deposito'),obs:'Desde escaner'});
+    saveData();updateBadge();
+    var sd=document.getElementById('scan-stk-disp');
+    if(sd){sd.textContent='Stock actual: '+l2.stk+' '+_ud;sd.style.color='var(--green)';}
     document.getElementById('scan-qty').value='';
     toast((tipo==='in'?'Ingreso':'Egreso')+' registrado: '+qty+' '+_ud,'ok');
+    rMats();
   };
-  result.appendChild(btnApl);
+  container.appendChild(btnApl);
 
-  // Boton escanear otro
-  var btnNuevo = document.createElement('button');
-  btnNuevo.className = 'btn btn-g';
-  btnNuevo.style.cssText = 'width:100%;margin-top:10px;padding:11px;font-size:13px';
-  btnNuevo.textContent = 'Escanear otro lote';
-  btnNuevo.onclick = function(){ rScan(); };
-  result.appendChild(btnNuevo);
+  var btnNuevo=document.createElement('button');
+  btnNuevo.style.cssText='width:100%;padding:11px;background:var(--surf2);border:1px solid var(--bdr2);border-radius:10px;color:var(--t2);font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer;touch-action:manipulation';
+  btnNuevo.textContent='Buscar otro lote';
+  btnNuevo.onclick=function(){rScan();};
+  container.appendChild(btnNuevo);
+
+  // Foco en cantidad
+  setTimeout(function(){ iq.focus(); },300);
 }
 
-// Detener camara al cambiar de vista
 var _origShowV = showV;
 showV = function(v){
   if(v !== 'scan'){ _stopScan(); }
