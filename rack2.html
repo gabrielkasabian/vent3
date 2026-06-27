@@ -93,7 +93,12 @@ if(cod && lote){
   var wrap = document.getElementById('btn-vivo-wrap');
   var btn = document.getElementById('btn-vivo');
   if(wrap && btn){
-    btn.href = 'https://gabrielkasabian.github.io/vent3/laboratorios-vent3-34.html?lote=' + encodeURIComponent(lote) + '&cod=' + encodeURIComponent(cod);
+    btn.href = '#';
+    btn.onclick = function(e){
+      e.preventDefault();
+      try{ sessionStorage.setItem('vent3_pending_lote', lote); sessionStorage.setItem('vent3_pending_cod', cod); }catch(ex){}
+      window.location.href = 'https://gabrielkasabian.github.io/vent3/laboratorios-vent3-34.html';
+    };
     wrap.style.display = 'block';
   }
 }
